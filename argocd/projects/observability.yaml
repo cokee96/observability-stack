@@ -21,6 +21,8 @@ spec:
       namespace: logging
     - server: https://kubernetes.default.svc
       namespace: argocd
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
 
   # Required for kube-prometheus-stack CRDs, ClusterRoles, ClusterRoleBindings,
   # PodSecurityPolicies, and other cluster-scoped resources.
