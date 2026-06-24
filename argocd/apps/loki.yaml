@@ -10,19 +10,18 @@ metadata:
 spec:
   project: observability
 
-  source:
-    repoURL: https://grafana.github.io/helm-charts
-    chart: loki-stack
-    targetRevision: "2.10.2"
-
-    helm:
-      releaseName: loki-stack
-
-      # Base values shared across all environments, then the per-environment
-      # overlay selected via $ARGOCD_ENV_environment from the argocd-cm ConfigMap.
-      valueFiles:
-        - $values/helm-values/loki-stack/base.yaml
-        - $values/helm-values/loki-stack/$ARGOCD_ENV_environment.yaml
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: loki-stack
+      targetRevision: "2.10.2"
+      helm:
+        releaseName: loki-stack
+        valueFiles:
+          - $values/helm-values/loki-stack/base.yaml
+          - $values/helm-values/loki-stack/dev.yaml
+    - repoURL: https://github.com/cokee96/observability-stack
+      targetRevision: HEAD
+      ref: values
 
   destination:
     server: https://kubernetes.default.svc
