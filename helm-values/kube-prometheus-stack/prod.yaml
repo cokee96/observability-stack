@@ -1,0 +1,43 @@
+# prod — high availability, 30d retention, multiple replicas
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    replicas: 2
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 50Gi
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+alertmanager:
+  alertmanagerSpec:
+    replicas: 3
+
+grafana:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - grafana.REPLACE_WITH_YOUR_DOMAIN
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.REPLACE_WITH_YOUR_DOMAIN

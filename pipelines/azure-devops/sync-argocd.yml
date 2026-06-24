@@ -1,0 +1,58 @@
+trigger: none
+pr: none
+
+parameters:
+  - name: application
+    displayName: "ArgoCD Application to sync"
+    type: string
+    default: "root"
+    values: [root, prometheus-stack, loki, argocd-upgrades]
+  - name: environment
+    displayName: "Target environment"
+    type: string
+    default: dev
+    values: [dev, pre, prod]
+
+variables:
+  - group: argocd-global   # must contain: ARGOCD_SERVER, ARGOCD_TOKEN
+
+stages:
+  - stage: Sync
+    displayName: "ArgoCD Sync (${{ parameters.application }})"
+    jobs:
+      - deployment: sync
+        displayName: "argocd app sync"
+        pool:
+          vmImage: ubuntu-latest
+        environment: ${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - bash: |
+                    curl -sSL -o /usr/local/bin/argocd \
+                      "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64"
+                    chmod +x /usr/local/bin/argocd
+                  displayName: "Install ArgoCD CLI"
+
+                - bash: |
+                    argocd login "$(ARGOCD_SERVER)" \
+                      --auth-token "$(ARGOCD_TOKEN)" \
+                      --insecure \
+                      --grpc-web
+
+                    echo "=== Current status ==="
+                    argocd app get "${{ parameters.application }}"
+
+                    echo "=== Syncing ==="
+                    argocd app sync "${{ parameters.application }}" \
+                      --prune \
+                      --timeout 300
+
+                    echo "=== Waiting for health ==="
+                    argocd app wait "${{ parameters.application }}" \
+                      --health \
+                      --timeout 300
+                  displayName: "Sync and wait for health"
+                  env:
+                    ARGOCD_TOKEN: $(ARGOCD_TOKEN)

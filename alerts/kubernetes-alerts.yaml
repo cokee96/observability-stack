@@ -1,0 +1,117 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: kubernetes.pods
+      interval: 1m
+      rules:
+        # Pod crash-looping
+        - alert: PodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total[15m]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash-looping"
+            description: "Container {{ $labels.container }} restarted {{ $value | printf \"%.0f\" }} times in the last 15m."
+
+        # Pod not ready
+        - alert: PodNotReady
+          expr: |
+            sum by (namespace, pod) (
+              max by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed"})
+              * on (namespace, pod) group_left(owner_kind)
+              max by (namespace, pod, owner_kind) (kube_pod_owner{owner_kind!="Job"})
+            ) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is not ready"
+            description: "Pod has been in a non-Ready state for more than 15 minutes."
+
+        # OOMKilled
+        - alert: ContainerOOMKilled
+          expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Container OOMKilled: {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "Container {{ $labels.container }} was OOMKilled."
+
+    - name: kubernetes.nodes
+      interval: 1m
+      rules:
+        # Node not ready
+        - alert: NodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.node }} is not ready"
+            description: "Node has been not-Ready for more than 5 minutes."
+
+        # Node memory pressure
+        - alert: NodeMemoryPressure
+          expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.node }} under memory pressure"
+            description: "Node is reporting MemoryPressure condition."
+
+        # Node high CPU
+        - alert: NodeHighCPU
+          expr: |
+            (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100 > 85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} CPU > 85%"
+            description: "Node CPU usage is {{ $value | printf \"%.1f\" }}% for more than 10 minutes."
+
+        # Node disk almost full
+        - alert: NodeDiskAlmostFull
+          expr: |
+            (node_filesystem_avail_bytes{fstype!="tmpfs",mountpoint="/"} /
+             node_filesystem_size_bytes{fstype!="tmpfs",mountpoint="/"}) * 100 < 15
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} disk < 15% free"
+            description: "Root filesystem has only {{ $value | printf \"%.1f\" }}% space remaining."
+
+    - name: kubernetes.deployments
+      interval: 1m
+      rules:
+        # Deployment replicas mismatch
+        - alert: DeploymentReplicasMismatch
+          expr: |
+            kube_deployment_spec_replicas != kube_deployment_status_available_replicas
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} replicas mismatch"
+            description: "Expected {{ $labels.spec_replicas }} replicas but {{ $labels.available_replicas }} are available."
+
+        # Deployment unavailable
+        - alert: DeploymentUnavailable
+          expr: kube_deployment_status_available_replicas == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has 0 available replicas"
+            description: "All pods of this deployment are unavailable."

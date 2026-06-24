@@ -1,0 +1,34 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+plan.txt
+outputs.txt
+
+# Secrets and local overrides
+*.secret
+*.secrets
+secrets/
+local-values.yaml
+local-values*.yaml
+
+# Helm
+charts/
+*.tgz
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Logs
+*.log
+
+# ArgoCD generated
+/tmp/

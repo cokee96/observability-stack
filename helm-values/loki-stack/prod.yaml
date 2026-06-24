@@ -1,0 +1,10 @@
+loki:
+  persistence:
+    size: 30Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi

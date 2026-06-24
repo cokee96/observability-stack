@@ -1,0 +1,97 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'APPLICATION',
+            choices: ['root', 'prometheus-stack', 'loki', 'argocd-upgrades'],
+            description: 'ArgoCD application to sync'
+        )
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'pre', 'prod'],
+            description: 'Target environment'
+        )
+    }
+
+    environment {
+        ARGOCD_SERVER = credentials('ARGOCD_SERVER')
+        ARGOCD_TOKEN  = credentials('ARGOCD_TOKEN')
+    }
+
+    options {
+        timeout(time: 15, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        timestamps()
+    }
+
+    stages {
+        stage('Install ArgoCD CLI') {
+            steps {
+                sh '''
+                    curl -sSL -o /tmp/argocd \
+                      "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64"
+                    chmod +x /tmp/argocd
+                    /tmp/argocd version --client
+                '''
+            }
+        }
+
+        stage('Check current status') {
+            steps {
+                sh '''
+                    /tmp/argocd login "${ARGOCD_SERVER}" \
+                      --auth-token "${ARGOCD_TOKEN}" \
+                      --insecure \
+                      --grpc-web
+
+                    echo "=== Application status ==="
+                    /tmp/argocd app get "${APPLICATION}"
+                '''
+            }
+        }
+
+        stage('Approval') {
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
+            steps {
+                script {
+                    timeout(time: 15, unit: 'MINUTES') {
+                        input(
+                            message: "Sync ${params.APPLICATION} in PROD?",
+                            ok: "Sync now",
+                            submitter: 'admin,team-leads'
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('Sync') {
+            steps {
+                sh '''
+                    /tmp/argocd app sync "${APPLICATION}" \
+                      --prune \
+                      --timeout 300
+
+                    /tmp/argocd app wait "${APPLICATION}" \
+                      --health \
+                      --timeout 300
+
+                    echo "=== Final status ==="
+                    /tmp/argocd app get "${APPLICATION}"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "ArgoCD sync of ${params.APPLICATION} in ${params.ENVIRONMENT} completed."
+        }
+        failure {
+            echo "ArgoCD sync failed. Check the application status in the ArgoCD UI."
+        }
+    }
+}

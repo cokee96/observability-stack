@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: observability
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  description: "Observability platform — Prometheus, Grafana, Loki, ArgoCD self-management"
+
+  sourceRepos:
+    - https://github.com/cokee96/observability-stack
+    - https://prometheus-community.github.io/helm-charts
+    - https://grafana.github.io/helm-charts
+    - https://argoproj.github.io/argo-helm
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: logging
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+
+  # Required for kube-prometheus-stack CRDs, ClusterRoles, ClusterRoleBindings,
+  # PodSecurityPolicies, and other cluster-scoped resources.
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  # Namespace-scoped resources — allow everything in allowed namespaces
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  # Orphaned resources monitoring (warn if resources exist that ArgoCD did not create)
+  orphanedResources:
+    warn: true
+
+  roles:
+    - name: read-only
+      description: Read-only access to the observability project
+      policies:
+        - p, proj:observability:read-only, applications, get, observability/*, allow
+      groups:
+        - observability-viewers
+
+    - name: sync-operator
+      description: Ability to sync applications in the observability project
+      policies:
+        - p, proj:observability:sync-operator, applications, get, observability/*, allow
+        - p, proj:observability:sync-operator, applications, sync, observability/*, allow
+      groups:
+        - observability-operators

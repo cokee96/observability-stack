@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: observability
+
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki-stack
+    targetRevision: "2.10.2"
+
+    helm:
+      releaseName: loki-stack
+
+      # Base values shared across all environments, then the per-environment
+      # overlay selected via $ARGOCD_ENV_environment from the argocd-cm ConfigMap.
+      valueFiles:
+        - $values/helm-values/loki-stack/base.yaml
+        - $values/helm-values/loki-stack/$ARGOCD_ENV_environment.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

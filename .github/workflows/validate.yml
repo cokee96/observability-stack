@@ -1,0 +1,61 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  helm-lint:
+    name: Helm lint values
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart:
+          - name: kube-prometheus-stack
+            repo: https://prometheus-community.github.io/helm-charts
+            version: "65.1.1"
+            values_dir: helm-values/kube-prometheus-stack
+          - name: loki-stack
+            repo: https://grafana.github.io/helm-charts
+            version: "2.10.2"
+            values_dir: helm-values/loki-stack
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: Add Helm repos
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+
+      - name: Lint ${{ matrix.chart.name }}
+        run: |
+          helm lint \
+            --values "${{ matrix.chart.values_dir }}/base.yaml" \
+            --values "${{ matrix.chart.values_dir }}/dev.yaml" \
+            "${{ matrix.chart.name }}" \
+            --generate-name || true
+
+  kubeconform:
+    name: Validate Kubernetes manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin
+
+      - name: Validate ArgoCD apps
+        run: |
+          kubeconform \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -summary \
+            argocd/apps/*.yaml argocd/projects/*.yaml bootstrap/root-app.yaml alerts/*.yaml

@@ -1,0 +1,167 @@
+# Base values — shared across all environments
+# Override per-environment in dev.yaml / pre.yaml / prod.yaml
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Prometheus ─────────────────────────────────────────────
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    retentionSize: ""
+    # Scrape interval
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    # Allow scraping from all namespaces
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    # Additional alert rules loaded from ConfigMaps
+    additionalScrapeConfigs: []
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+# ── Alertmanager ──────────────────────────────────────────
+alertmanager:
+  alertmanagerSpec:
+    retention: 120h
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: [alertname, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: "null"
+      routes:
+        - matchers:
+            - alertname =~ "InfoInhibitor|Watchdog"
+          receiver: "null"
+        - matchers:
+            - severity = "critical"
+          receiver: "slack-critical"
+          continue: true
+    receivers:
+      - name: "null"
+      - name: "slack-critical"
+        slack_configs:
+          - api_url: "https://hooks.slack.com/services/REPLACE_ME"
+            channel: "#alerts-critical"
+            title: "{{ .GroupLabels.alertname }}"
+            text: >-
+              {{ range .Alerts }}
+                *Alert:* {{ .Annotations.summary }}
+                *Description:* {{ .Annotations.description }}
+                *Severity:* {{ .Labels.severity }}
+              {{ end }}
+    inhibit_rules:
+      - source_matchers:
+          - severity = "critical"
+        target_matchers:
+          - severity = "warning"
+        equal: [alertname, namespace]
+
+# ── Grafana ────────────────────────────────────────────────
+grafana:
+  enabled: true
+  adminPassword: "change-me-in-production"
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: Europe/Madrid
+  plugins:
+    - grafana-piechart-panel
+    - grafana-clock-panel
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-stack.logging.svc.cluster.local:3100
+      access: proxy
+      isDefault: false
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+  ingress:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ── Node Exporter ──────────────────────────────────────────
+nodeExporter:
+  enabled: true
+
+# ── kube-state-metrics ────────────────────────────────────
+kubeStateMetrics:
+  enabled: true
+
+# ── Default alert rules ───────────────────────────────────
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: true
+    configReloaders: true
+    general: true
+    k8sContainerCpuUsageSecondsTotal: true
+    k8sContainerMemoryCache: true
+    k8sContainerMemoryRss: true
+    k8sContainerMemorySwap: true
+    k8sContainerResource: true
+    k8sPodOwner: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubelet: true
+    kubeProxy: true
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeSchedulerAlerting: true
+    kubeSchedulerRecording: true
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+    windows: false
