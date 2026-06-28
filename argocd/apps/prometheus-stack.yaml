@@ -43,7 +43,6 @@ spec:
         maxDuration: 3m
 
   ignoreDifferences:
-    # kube-prometheus-stack mutates these fields at runtime
     - group: admissionregistration.k8s.io
       kind: MutatingWebhookConfiguration
       jsonPointers:
@@ -52,3 +51,7 @@ spec:
       kind: ValidatingWebhookConfiguration
       jsonPointers:
         - /webhooks/0/clientConfig/caBundle
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/persistentVolumeClaimRetentionPolicy
