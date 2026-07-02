@@ -9,7 +9,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: tracing
+  project: observability
 
   sources:
     # Helm chart source
