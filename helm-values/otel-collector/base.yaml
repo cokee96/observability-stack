@@ -89,7 +89,7 @@ ports:
     containerPort: 8888
     servicePort: 8888
     protocol: TCP
-  prometheus-exporter:
+  prom-exporter:
     enabled: true
     containerPort: 8889
     servicePort: 8889
