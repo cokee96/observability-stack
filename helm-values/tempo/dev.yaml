@@ -1,0 +1,37 @@
+## Grafana Tempo — dev environment overrides
+## Mode: single binary, local filesystem, short retention
+
+tempo:
+  # Retention: 3 days
+  retention: 72h
+
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+  ingester:
+    trace_idle_period: 10s
+    max_block_duration: 5m
+    lifecycler:
+      ring:
+        replication_factor: 1
+
+  # Verbose logging for development
+  server:
+    log_level: debug
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+persistence:
+  enabled: true
+  size: 5Gi

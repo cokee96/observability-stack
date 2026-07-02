@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-collector
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: distributed-tracing
+    app.kubernetes.io/component: tracing
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: tracing
+
+  sources:
+    # Helm chart source
+    - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+      chart: opentelemetry-collector
+      targetRevision: 0.97.1
+      helm:
+        releaseName: otel-collector
+        valueFiles:
+          - $values/helm-values/otel-collector/base.yaml
+          - $values/helm-values/otel-collector/dev.yaml  # change to pre.yaml / prod.yaml per environment
+    # Values repository (this repo) — referenced as $values above
+    - repoURL: https://github.com/cokee96/observability-stack
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tracing
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  revisionHistoryLimit: 3

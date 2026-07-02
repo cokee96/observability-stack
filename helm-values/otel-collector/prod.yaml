@@ -1,0 +1,53 @@
+## OpenTelemetry Collector — production environment overrides
+## Debug exporter disabled; higher resources; tighter batch settings.
+
+replicaCount: 2
+
+config:
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_mib: 1500
+      spike_limit_mib: 400
+    batch:
+      timeout: 5s
+      send_batch_size: 4096
+      send_batch_max_size: 8192
+
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlp/tempo]
+      metrics:
+        receivers: [prometheus]
+        processors: [batch]
+        exporters: [prometheus]
+
+    telemetry:
+      logs:
+        level: "warn"
+      metrics:
+        address: 0.0.0.0:8888
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Pod disruption budget — keep at least one replica during rollouts
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75

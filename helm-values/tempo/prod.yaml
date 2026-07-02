@@ -1,0 +1,76 @@
+## Grafana Tempo — production environment overrides
+## Mode: distributed storage with Azure Blob Storage backend, 30-day retention
+## Note: AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY must be
+##       provided via an ExternalSecret or sealed secret named tempo-azure-storage.
+
+tempo:
+  # Retention: 30 days
+  retention: 720h
+
+  storage:
+    trace:
+      backend: azure
+      azure:
+        # Container must exist in the storage account before deployment
+        container_name: tempo-traces
+        # These values are injected from the tempo-azure-storage Secret
+        storage_account_name: "${AZURE_STORAGE_ACCOUNT_NAME}"
+        storage_account_key: "${AZURE_STORAGE_ACCOUNT_KEY}"
+        endpoint_suffix: core.windows.net
+      wal:
+        path: /var/tempo/wal
+
+  ingester:
+    trace_idle_period: 30s
+    max_block_bytes: 10_000_000
+    max_block_duration: 30m
+    lifecycler:
+      ring:
+        # Increase to 3 for HA — requires 3 Tempo replicas
+        replication_factor: 1
+
+  compactor:
+    compaction:
+      block_retention: 720h     # matches top-level retention
+      compacted_block_retention: 1h
+      compaction_window: 1h
+      max_block_bytes: 107374182400  # 100 GiB
+
+  server:
+    log_level: warn
+
+  # Tighten resource limits — tune per observed usage
+  query_frontend:
+    search:
+      duration_slo: 5s
+      throughput_bytes_slo: 1.073741824e+09
+      max_duration: 0s
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+persistence:
+  enabled: true
+  size: 50Gi
+
+# Expose as ClusterIP; access via Grafana in the same cluster
+service:
+  type: ClusterIP
+
+# Environment variable injection from Secret
+extraEnv:
+  - name: AZURE_STORAGE_ACCOUNT_NAME
+    valueFrom:
+      secretKeyRef:
+        name: tempo-azure-storage
+        key: storageAccountName
+  - name: AZURE_STORAGE_ACCOUNT_KEY
+    valueFrom:
+      secretKeyRef:
+        name: tempo-azure-storage
+        key: storageAccountKey

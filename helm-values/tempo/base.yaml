@@ -1,0 +1,97 @@
+## Grafana Tempo — base values (all environments)
+## Chart: grafana/tempo v1.10.3
+## Applied first; environment overlays are merged on top.
+
+tempo:
+  reportingEnabled: false
+  multitenancyEnabled: false
+
+  server:
+    http_listen_port: 3100
+
+  # Receivers — OTLP gRPC + HTTP
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  # Storage — overridden per environment
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+  # Core components
+  distributor:
+    log_received_spans:
+      enabled: false
+
+  ingester:
+    trace_idle_period: 10s
+    max_block_bytes: 1_000_000
+    max_block_duration: 5m
+    lifecycler:
+      ring:
+        replication_factor: 1
+
+  compactor:
+    compaction:
+      compacted_block_retention: 1h
+
+  querier:
+    max_concurrent_queries: 20
+
+  query_frontend:
+    search:
+      duration_slo: 5s
+      throughput_bytes_slo: 1.073741824e+09
+
+  # Metrics generator (span metrics → Prometheus)
+  metrics_generator:
+    enabled: true
+    storage:
+      path: /var/tempo/generator/wal
+      remote_write:
+        - url: http://prometheus-operated.monitoring.svc.cluster.local:9090/api/v1/write
+    processor:
+      service_graphs:
+        enabled: true
+      span_metrics:
+        enabled: true
+
+  # Global limits
+  global_overrides:
+    metrics_generator_processors:
+      - service-graphs
+      - span-metrics
+
+serviceAccount:
+  create: true
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 3100
+
+serviceMonitor:
+  enabled: false
+
+persistence:
+  enabled: true
+  storageClassName: ""
+  size: 10Gi
+
+# Default resource requests — overridden per environment
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

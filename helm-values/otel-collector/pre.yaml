@@ -1,0 +1,38 @@
+## OpenTelemetry Collector — pre-production environment overrides
+## Debug exporter disabled; moderate resource allocation.
+
+config:
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_mib: 600
+      spike_limit_mib: 150
+    batch:
+      timeout: 10s
+      send_batch_size: 2048
+      send_batch_max_size: 4096
+
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlp/tempo]
+      metrics:
+        receivers: [prometheus]
+        processors: [batch]
+        exporters: [prometheus]
+
+    telemetry:
+      logs:
+        level: "info"
+      metrics:
+        address: 0.0.0.0:8888
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi

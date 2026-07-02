@@ -1,0 +1,38 @@
+## OpenTelemetry Collector — dev environment overrides
+## Debug exporter enabled; low resource requests.
+
+config:
+  exporters:
+    otlp/tempo:
+      endpoint: http://tempo.tracing.svc.cluster.local:4317
+      tls:
+        insecure: true
+    debug:
+      verbosity: normal
+      sampling_initial: 5
+      sampling_thereafter: 200
+
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlp/tempo, debug]
+      metrics:
+        receivers: [prometheus]
+        processors: [batch]
+        exporters: [prometheus]
+
+    telemetry:
+      logs:
+        level: "debug"
+      metrics:
+        address: 0.0.0.0:8888
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

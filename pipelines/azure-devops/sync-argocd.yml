@@ -6,7 +6,7 @@ parameters:
     displayName: "ArgoCD Application to sync"
     type: string
     default: "root"
-    values: [root, prometheus-stack, loki, argocd-upgrades]
+    values: [root, prometheus-stack, loki, tempo, otel-collector, argocd-upgrades]
   - name: environment
     displayName: "Target environment"
     type: string

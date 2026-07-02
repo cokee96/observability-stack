@@ -4,7 +4,7 @@ pipeline {
     parameters {
         choice(
             name: 'APPLICATION',
-            choices: ['root', 'prometheus-stack', 'loki', 'argocd-upgrades'],
+            choices: ['root', 'prometheus-stack', 'loki', 'tempo', 'otel-collector', 'argocd-upgrades'],
             description: 'ArgoCD application to sync'
         )
         choice(

@@ -1,0 +1,404 @@
+## Grafana dashboard ConfigMap — Distributed Tracing Overview
+## The Grafana sidecar picks this up via label grafana_dashboard: "1".
+## Deploy into the Grafana namespace: kubectl apply -f grafana/dashboards/traces-overview.yaml -n monitoring
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traces-overview-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/part-of: distributed-tracing
+data:
+  traces-overview.json: |
+    {
+      "__inputs": [
+        {
+          "name": "DS_TEMPO",
+          "label": "Tempo",
+          "description": "Grafana Tempo datasource",
+          "type": "datasource",
+          "pluginId": "tempo",
+          "pluginName": "Tempo"
+        }
+      ],
+      "__elements": {},
+      "__requires": [
+        {
+          "type": "grafana",
+          "id": "grafana",
+          "name": "Grafana",
+          "version": "10.0.0"
+        },
+        {
+          "type": "datasource",
+          "id": "tempo",
+          "name": "Tempo",
+          "version": "1.0.0"
+        },
+        {
+          "type": "panel",
+          "id": "timeseries",
+          "name": "Time series",
+          "version": ""
+        },
+        {
+          "type": "panel",
+          "id": "table",
+          "name": "Table",
+          "version": ""
+        }
+      ],
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "description": "Distributed tracing overview — span rates, durations, error rates, and trace search using Grafana Tempo and OpenTelemetry",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "spans/s",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": { "type": "linear" },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": { "group": "A", "mode": "none" },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 80 }
+                ]
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "id": 1,
+          "options": {
+            "legend": {
+              "calcs": ["mean", "max", "lastNotNull"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+              "query": "{ resource.service.name =~ \"${service:regex}\" } | rate()",
+              "queryType": "metrics",
+              "refId": "A",
+              "step": "auto"
+            }
+          ],
+          "title": "Traces per Second",
+          "description": "Rate of ingested spans, grouped by service. Uses TraceQL metrics pipeline.",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "duration",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": { "type": "linear" },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": { "group": "A", "mode": "none" },
+                "thresholdsStyle": {
+                  "mode": "line",
+                  "steps": [
+                    { "color": "transparent", "value": null },
+                    { "color": "orange", "value": 500 },
+                    { "color": "red", "value": 1000 }
+                  ]
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 500 },
+                  { "color": "red", "value": 1000 }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": ["mean", "p95", "lastNotNull"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+              "query": "{ resource.service.name =~ \"${service:regex}\" } | histogram_over_time(duration) | quantile_over_time(0.99, 5m)",
+              "queryType": "metrics",
+              "refId": "A",
+              "step": "auto"
+            }
+          ],
+          "title": "P99 Trace Duration",
+          "description": "99th-percentile end-to-end trace duration per service, computed via Tempo TraceQL histogram metrics.",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "errors/s",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": { "type": "linear" },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": { "group": "A", "mode": "none" },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "color": { "fixedColor": "red", "mode": "fixed" },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 0.01 }
+                ]
+              },
+              "unit": "reqps"
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "error rate" },
+                "properties": [
+                  { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+                ]
+              }
+            ]
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "id": 3,
+          "options": {
+            "legend": {
+              "calcs": ["mean", "max", "lastNotNull"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+              "query": "{ resource.service.name =~ \"${service:regex}\" && status = error } | rate()",
+              "queryType": "metrics",
+              "refId": "A",
+              "legendFormat": "{{resource.service.name}} — errors",
+              "step": "auto"
+            }
+          ],
+          "title": "Error Rate by Service",
+          "description": "Rate of error-status spans per service. Spans with status=error per OpenTelemetry semantic conventions.",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "custom": {
+                "align": "auto",
+                "cellOptions": { "type": "auto" },
+                "filterable": true,
+                "inspect": false,
+                "minWidth": 50
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Duration" },
+                "properties": [
+                  { "id": "unit", "value": "ms" },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": null },
+                        { "color": "yellow", "value": 200 },
+                        { "color": "red", "value": 1000 }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": { "type": "color-background", "mode": "gradient" }
+                  }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "traceID" },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Open trace",
+                        "url": "/explore?orgId=1&left=%7B%22datasource%22:%22${DS_TEMPO}%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22datasource%22:%7B%22type%22:%22tempo%22%7D,%22queryType%22:%22traceql%22,%22query%22:%22${__value.raw}%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "id": 4,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": ["sum"],
+              "show": false
+            },
+            "frameIndex": 0,
+            "showHeader": true,
+            "sortBy": [
+              { "desc": true, "displayName": "Start time" }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+              "limit": 20,
+              "query": "{ resource.service.name =~ \"${service:regex}\" }",
+              "queryType": "traceql",
+              "refId": "A",
+              "tableType": "traces"
+            }
+          ],
+          "title": "Trace Search",
+          "description": "Recent traces matching the selected service. Click traceID to open in Explore.",
+          "type": "table"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "tags": ["tracing", "tempo", "opentelemetry"],
+      "templating": {
+        "list": [
+          {
+            "current": {
+              "selected": true,
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": { "type": "tempo", "uid": "${DS_TEMPO}" },
+            "definition": "label_values(resource.service.name)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Service",
+            "multi": false,
+            "name": "service",
+            "options": [],
+            "query": {
+              "label": "resource.service.name",
+              "query": "label_values(resource.service.name)",
+              "refId": "StandardVariableQuery",
+              "type": 5
+            },
+            "refresh": 2,
+            "regex": "",
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Distributed Tracing — Overview",
+      "uid": "distributed-tracing-overview",
+      "version": 1,
+      "weekStart": ""
+    }

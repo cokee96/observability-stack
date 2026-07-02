@@ -20,6 +20,14 @@ jobs:
             repo: https://grafana.github.io/helm-charts
             version: "2.10.2"
             values_dir: helm-values/loki-stack
+          - name: tempo
+            repo: https://grafana.github.io/helm-charts
+            version: "1.10.3"
+            values_dir: helm-values/tempo
+          - name: opentelemetry-collector
+            repo: https://open-telemetry.github.io/opentelemetry-helm-charts
+            version: "0.97.1"
+            values_dir: helm-values/otel-collector
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +39,7 @@ jobs:
         run: |
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
           helm repo update
 
       - name: Lint ${{ matrix.chart.name }}
